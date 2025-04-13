@@ -19,4 +19,16 @@ class RecipeController extends Controller
 
         return response()->json($recetas);
     }
+
+    public function getAllUsersRecipes(Request $request)
+    {
+        $user  = $request->user();
+
+        $recipes = Recipe::where('is_official', true)
+            ->orWhereHas('usersWhoFavourited', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })->get();
+
+        return response()->json($recipes);
+    }
 }

@@ -82,4 +82,14 @@ class Recipe extends Model
             $query->whereIn('ingredients.id', $ingredientsIDs);
         });
     }
+
+    /**
+     * Get the users who favourited the recipe.
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function usersWhoFavourited()
+    {
+        return $this->belongsToMany(User::class, 'favourites')
+            ->withTimestamps();
+    }
 }

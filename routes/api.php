@@ -28,4 +28,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', [AuthController::class, 'user']);
 
     Route::post('/recipes/filter-by-ingredient', [RecipeController::class, 'filterByIngredient']);
+    Route::post('/recipes/userRecipes', [RecipeController::class, 'getAllUsersRecipes']);
 });
