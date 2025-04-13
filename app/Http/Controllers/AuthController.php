@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cookie;
 
 class AuthController extends Controller
 {
@@ -47,8 +48,17 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->tokens()->each(function ($token) {
+            $token->delete();
+        });
+        // Invalidar la sesión y eliminar las cookies de autenticación
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
+        // Eliminar cookies relacionadas con Sanctum si las hay
+        Cookie::queue(Cookie::forget('XSRF-TOKEN'));
+        Cookie::queue(Cookie::forget('laravel_session'));
+        
         return response()->json(['message' => 'Logged out successfully']);
     }
 
