@@ -1,6 +1,14 @@
 <?php
 
+use App\Http\Controllers\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Laravel\Socialite\Facades\Socialite;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Redirect;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,5 +22,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return ['Laravel' => app()->version()];
 });
+
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect']);
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
+
+require __DIR__.'/auth.php';
