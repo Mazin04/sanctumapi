@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\RecipeTranslation; 
 
 class Recipe extends Model
 {
@@ -65,6 +66,16 @@ class Recipe extends Model
     public function favourites()
     {
         return $this->hasMany(Favourite::class);
+    }
+
+    public function translations()
+    {
+        return $this->hasMany(RecipeTranslation::class);
+    }
+
+    public function recipeSteps()
+    {
+        return $this->hasMany(RecipeStep::class);
     }
 
     /**

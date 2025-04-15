@@ -19,7 +19,11 @@ class Type extends Model
      */
     public function recipes()
     {
-        return $this->belongsToMany(Recipe::class, 'recipe_types')
-            ->withTimestamps();
+        return $this->belongsToMany(Recipe::class, 'recipe_types');
     }
+
+    public function translations()
+    {
+        return $this->hasMany(TypeTranslation::class);
+    }    
 }
