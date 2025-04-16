@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Recipe;
 use Illuminate\Http\Request;
+use App\Models\Favourite;
 
 class RecipeController extends Controller
 {
@@ -20,44 +21,44 @@ class RecipeController extends Controller
         $ingredientIDs = $request->input('ingredients');
 
         if (!is_array($ingredientIDs) || empty($ingredientIDs)) {
-            $message = $lang === 'es' 
+            $message = $lang === 'es'
                 ? 'Debes proporcionar al menos un ingrediente.'
                 : 'You must provide at least one ingredient.';
-    
+
             return response()->json(['error' => $message], 400);
         }
 
         $recipes = Recipe::whereHas('ingredients', function ($query) use ($ingredientIDs) {
             $query->whereIn('ingredient_id', $ingredientIDs);
         })
-        ->with([
-            'translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            },
-            'recipeSteps',
-            'types.translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            }
-        ])
-        ->get()
-        ->map(function ($recipe) {
-            return [
-                'id' => $recipe->id,
-                'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                'description' => $recipe->translations->first()->description ?? null,
-                'image' => asset($recipe->image_path),
-                'is_official' => $recipe->is_official,
-                'is_private' => $recipe->is_private,
-                'steps_count' => $recipe->recipeSteps->count(),
-                'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
-            ];
-        });
+            ->with([
+                'translations' => function ($query) use ($lang) {
+                    $query->where('language', $lang);
+                },
+                'recipeSteps',
+                'types.translations' => function ($query) use ($lang) {
+                    $query->where('language', $lang);
+                }
+            ])
+            ->get()
+            ->map(function ($recipe) {
+                return [
+                    'id' => $recipe->id,
+                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
+                    'description' => $recipe->translations->first()->description ?? null,
+                    'image' => asset($recipe->image_path),
+                    'is_official' => $recipe->is_official,
+                    'is_private' => $recipe->is_private,
+                    'steps_count' => $recipe->recipeSteps->count(),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                ];
+            });
 
         if ($recipes->isEmpty()) {
             $message = $lang === 'es'
                 ? 'No se encontraron recetas con esos ingredientes.'
                 : 'No recipes found with those ingredients.';
-    
+
             return response()->json(['error' => $message], 404);
         }
 
@@ -101,12 +102,12 @@ class RecipeController extends Controller
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
                 ];
             });
-        
+
         if ($recipes->isEmpty()) {
             $message = $lang === 'es'
                 ? 'No se encontraron recetas.'
                 : 'No recipes found.';
-    
+
             return response()->json(['error' => $message], 404);
         }
 
@@ -152,7 +153,7 @@ class RecipeController extends Controller
             $message = $lang === 'es'
                 ? 'No se encontraron recetas favoritas.'
                 : 'No favourite recipes found.';
-    
+
             return response()->json(['error' => $message], 404);
         }
 
@@ -196,7 +197,7 @@ class RecipeController extends Controller
             $message = $lang === 'es'
                 ? 'No se encontraron recetas creadas por ti.'
                 : 'No recipes created by you found.';
-    
+
             return response()->json(['error' => $message], 404);
         }
 
@@ -273,7 +274,7 @@ class RecipeController extends Controller
             $message = $lang === 'es'
                 ? 'Debes proporcionar un tipo de receta.'
                 : 'You must provide a recipe type.';
-            return response()->json(['error' => $message], 400);            
+            return response()->json(['error' => $message], 400);
         }
 
         $recipes = Recipe::where(function ($query) use ($user) {

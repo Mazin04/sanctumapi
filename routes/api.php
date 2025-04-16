@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FavouriteController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\RecipeController;
 
@@ -28,9 +29,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', [AuthController::class, 'user']);
 
     Route::post('/recipes/filter-by-ingredient', [RecipeController::class, 'filterByIngredient']);
-    Route::post('/user/allRecipes', [RecipeController::class, 'getAllUsersRecipes']);
-    Route::post('/user/favorites', [RecipeController::class, 'getUserFavouriteRecipes']);
-    Route::post('/user/yourRecipes', [RecipeController::class, 'getUserCreatedRecipes']);
     Route::post('/recipes/byName', [RecipeController::class, 'getRecipesByName']);
     Route::post('/recipes/byType', [RecipeController::class, 'getRecipesByType']);
+
+    Route::post('/user/allRecipes', [RecipeController::class, 'getAllUsersRecipes']);
+    Route::post('/user/favourites', [RecipeController::class, 'getUserFavouriteRecipes']);
+    Route::post('/user/yourRecipes', [RecipeController::class, 'getUserCreatedRecipes']);
+    Route::delete('/recipes/{id}/favourite', [FavouriteController::class, 'removeFromFavourites']);
+    Route::post('/recipes/{id}/favourite', [FavouriteController::class, 'addToFavourites']);
 });
