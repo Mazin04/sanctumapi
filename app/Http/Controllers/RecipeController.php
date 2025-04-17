@@ -6,6 +6,7 @@ use App\Models\Recipe;
 use Illuminate\Http\Request;
 use App\Models\Favourite;
 use App\Models\Ingredient;
+use App\Models\IngredientQuantity;
 
 class RecipeController extends Controller
 {
@@ -47,7 +48,7 @@ class RecipeController extends Controller
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => asset($recipe->image_path),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
@@ -96,7 +97,7 @@ class RecipeController extends Controller
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => asset($recipe->image_path),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
@@ -142,7 +143,7 @@ class RecipeController extends Controller
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => asset($recipe->image_path),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
@@ -186,7 +187,7 @@ class RecipeController extends Controller
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => asset($recipe->image_path),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
@@ -241,7 +242,7 @@ class RecipeController extends Controller
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => asset($recipe->image_path),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
@@ -299,7 +300,7 @@ class RecipeController extends Controller
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => asset($recipe->image_path),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
@@ -321,24 +322,30 @@ class RecipeController extends Controller
     {
         $user = $request->user();
         $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
-
+    
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
+            'names' => 'required|array|min:1',
+            'names.*.language' => 'required|string|max:2',
+            'names.*.name' => 'required|string|max:255',
+            'descriptions' => 'required|array|min:1',
+            'descriptions.*.language' => 'required|string|max:2',
+            'descriptions.*.description' => 'required|string',
             'ingredients' => 'required|array|min:1',
             'ingredients.*.id' => 'required|integer|exists:ingredients,id',
             'ingredients.*.quantity' => 'required|string|max:255',
             'ingredients.*.language' => 'required|string|max:2',
             'steps' => 'required|array|min:1',
-            'steps.*' => 'string',
+            'steps.*.language' => 'required|string|max:2',
+            'steps.*.order' => 'required|integer',
+            'steps.*.step' => 'required|string',
             'types' => 'required|array|min:1',
             'types.*' => 'integer|exists:types,id',
             'is_private' => 'required|boolean',
             'is_official' => 'required|boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
         ]);
-
-        // Procesar la imagen (si existe)
+    
+        // Procesar imagen (si existe)
         $imagePath = null;
         if ($request->hasFile('image')) {
             $image = $request->file('image');
@@ -346,43 +353,63 @@ class RecipeController extends Controller
             $imagePath = $image->storeAs('recipes', $imageName, 'public');
             $imagePath = '/storage/' . $imagePath;
         }
-
+    
+        // Crear la receta
         $recipe = Recipe::create([
             'creator_id' => $user->id,
             'is_private' => $validated['is_private'],
             'is_official' => $validated['is_official'],
-            'image_path' => $imagePath,
+            'image_path' => $imagePath ?? null,
         ]);
-
-        $recipe->translations()->create([
-            'language' => $lang,
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-        ]);
-
-        foreach ($validated['steps'] as $index => $step) {
+    
+        // Guardar traducciones del nombre y descripción
+        foreach ($validated['names'] as $index => $nameData) {
+            $descriptionData = collect($validated['descriptions'])->firstWhere('language', $nameData['language']);
+            $recipe->translations()->create([
+                'language' => $nameData['language'],
+                'name' => $nameData['name'],
+                'description' => $descriptionData ? $descriptionData['description'] : '',
+            ]);
+        }
+    
+        // Agrupar pasos por número (order) y luego traducirlos
+        $stepsGrouped = collect($validated['steps'])->groupBy('order');
+        foreach ($stepsGrouped as $stepNumber => $stepTranslations) {
             $recipeStep = $recipe->steps()->create([
-                'step_number' => $index + 1,
+                'step_number' => $stepNumber,
             ]);
-
-            $recipeStep->translations()->create([
-                'language' => 'es',
-                'step_description' => $step,
-            ]);
+    
+            foreach ($stepTranslations as $translation) {
+                $recipeStep->translations()->create([
+                    'language' => $translation['language'],
+                    'step_description' => $translation['step'],
+                ]);
+            }
         }
-
+    
+        // Asociar ingredientes (por idioma, pero una sola relación con la receta)
+        $uniqueIngredients = collect($validated['ingredients'])->pluck('id')->unique();
+        foreach ($uniqueIngredients as $ingredientId) {
+            $recipe->ingredients()->attach($ingredientId);
+        }
+    
+        // Guardar cantidades por idioma
         foreach ($validated['ingredients'] as $ingredient) {
-            // Asociamos el ingrediente y la cantidad
-            $ingredientModel = Ingredient::find($ingredient['id']);
-            $ingredientModel->quantities()->create([
-                'quantity' => $ingredient['quantity'],
-                'language' => $ingredient['language'],
+            IngredientQuantity::create([
+                'ingredient_id' => $ingredient['id'],
                 'recipe_id' => $recipe->id,
+                'language' => $ingredient['language'],
+                'quantity' => $ingredient['quantity'],
             ]);
         }
-
+    
+        // Asociar tipos
         $recipe->types()->attach($validated['types']);
-
-        return response()->json(['message' => 'Receta creada con éxito.', 'recipe' => $recipe]);
+    
+        $message = $lang === 'es'
+            ? 'Receta creada con éxito.'
+            : 'Recipe created successfully.';
+        return response()->json(['message' => $message, 'recipe' => $recipe], 201);
     }
+    
 }
