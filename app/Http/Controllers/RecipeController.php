@@ -430,13 +430,20 @@ class RecipeController extends Controller
     public function update(Request $request, $id)
     {
         $user = $request->user();
+        $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
 
         $recipe = Recipe::find($id);
         if ($recipe === null) {
-            return response()->json(['error' => 'Receta no encontrada'], 404);
+            $message = $lang === 'es'
+                ? 'Receta no encontrada.'
+                : 'Recipe not found.';
+            return response()->json(['error' => $message], 404);
         }
         if ($recipe->creator_id !== $user->id) {
-            return response()->json(['error' => 'No tienes permiso para editar esta receta'], 403);
+            $message = $lang === 'es'
+                ? 'No tienes permiso para editar esta receta.'
+                : 'You do not have permission to edit this recipe.';
+            return response()->json(['error' => $message], 403);
         }
 
         // Validar los datos de entrada
@@ -545,6 +552,44 @@ class RecipeController extends Controller
         // Actualizar tipos
         $recipe->types()->sync($validated['types']);
 
-        return response()->json(['message' => 'Receta actualizada con éxito', 'recipe' => $recipe->fresh()]);
+        $message = $lang === "es"
+            ? 'Receta actualizada con éxito.'
+            : 'Recipe updated successfully.';
+        return response()->json([
+            'message' => $message,
+            'recipe' => $recipe->load([
+                'translations',
+                'recipeSteps.translations',
+                'ingredients',
+                'types.translations'
+            ])
+        ]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $user = $request->user();
+        $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
+
+        $recipe = Recipe::find($id);
+        if ($recipe === null) {
+            $message = $lang === 'es'
+                ? 'Receta no encontrada.'
+                : 'Recipe not found.';
+            return response()->json(['error' => $message], 404);
+        }
+        if ($recipe->creator_id !== $user->id) {
+            $message = $lang === 'es'
+                ? 'No tienes permiso para eliminar esta receta.'
+                : 'You do not have permission to delete this recipe.';
+            return response()->json(['error' => $message], 403);
+        }
+
+        $recipe->delete();
+
+        $message = $lang === 'es'
+            ? 'Receta eliminada con éxito.'
+            : 'Recipe deleted successfully.';
+        return response()->json(['message' => $message], 200);
     }
 }
