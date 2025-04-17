@@ -23,4 +23,13 @@ class RecipeStep extends Model
     {
         return $this->belongsTo(Recipe::class);
     }
+
+    /**
+     * Get the translations for the recipe step.
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function translations()
+    {
+        return $this->hasMany(RecipeStepTranslation::class);
+    }
 }

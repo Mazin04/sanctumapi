@@ -25,16 +25,24 @@ Route::get('translations/{language}', [TranslationController::class, 'getTransla
 
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Auth
     Route::get('logout', [AuthController::class, 'logout']);
     Route::get('user', [AuthController::class, 'user']);
 
+    // Filters
     Route::post('/recipes/filter-by-ingredient', [RecipeController::class, 'filterByIngredient']);
     Route::post('/recipes/byName', [RecipeController::class, 'getRecipesByName']);
     Route::post('/recipes/byType', [RecipeController::class, 'getRecipesByType']);
 
+    // User Recipes
     Route::post('/user/allRecipes', [RecipeController::class, 'getAllUsersRecipes']);
-    Route::post('/user/favourites', [RecipeController::class, 'getUserFavouriteRecipes']);
     Route::post('/user/yourRecipes', [RecipeController::class, 'getUserCreatedRecipes']);
+
+    // Favourites
+    Route::post('/user/favourites', [RecipeController::class, 'getUserFavouriteRecipes']);
     Route::delete('/recipes/{id}/favourite', [FavouriteController::class, 'removeFromFavourites']);
     Route::post('/recipes/{id}/favourite', [FavouriteController::class, 'addToFavourites']);
+
+    // CRUD Recipes
+    Route::post('/recipes', [RecipeController::class, 'store']);
 });

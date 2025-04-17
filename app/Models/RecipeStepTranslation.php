@@ -9,6 +9,8 @@ class RecipeStepTranslation extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['recipe_step_id', 'language', 'step_description'];
+
     public function recipeStep()
     {
         return $this->belongsTo(RecipeStep::class);

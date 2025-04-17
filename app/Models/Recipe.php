@@ -11,13 +11,12 @@ class Recipe extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
-        'prep_time',
-        'image',
-        'is_oficial',
+        'creator_id',
         'is_private',
-        'user_id',
+        'is_official',
+        'image_path',
     ];
+    
 
     /**
      * Get the user that created the recipe.

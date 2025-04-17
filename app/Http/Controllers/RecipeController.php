@@ -315,4 +315,66 @@ class RecipeController extends Controller
 
         return response()->json($recipes);
     }
+
+    public function store(Request $request)
+    {
+        $user = $request->user();
+        $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'ingredients' => 'required|array|min:1',
+            'ingredients.*.id' => 'required|integer|exists:ingredients,id',
+            'ingredients.*.quantity' => 'required|string|max:255',
+            'steps' => 'required|array|min:1',
+            'steps.*' => 'string',
+            'types' => 'required|array|min:1',
+            'types.*' => 'integer|exists:types,id',
+            'is_private' => 'required|boolean',
+            'is_official' => 'required|boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        // Procesar la imagen (si existe)
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = uniqid() . '.' . $image->getClientOriginalExtension();
+            $imagePath = $image->storeAs('recipes', $imageName, 'public');
+            $imagePath = '/storage/' . $imagePath;
+        }
+
+        $recipe = Recipe::create([
+            'creator_id' => $user->id,
+            'is_private' => $validated['is_private'],
+            'is_official' => $validated['is_official'],
+            'image_path' => $imagePath,
+        ]);
+
+        $recipe->translations()->create([
+            'language' => $lang,
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+        ]);
+
+        foreach ($validated['steps'] as $index => $step) {
+            $recipeStep = $recipe->steps()->create([
+                'step_number' => $index + 1,
+            ]);
+
+            $recipeStep->translations()->create([
+                'language' => 'es',
+                'step_description' => $step,
+            ]);
+        }
+
+        foreach ($validated['ingredients'] as $ingredient) {
+            $recipe->ingredients()->attach($ingredient['id'], ['quantity' => $ingredient['quantity']]);
+        }
+
+        $recipe->types()->attach($validated['types']);
+
+        return response()->json(['message' => 'Receta creada con éxito.', 'recipe' => $recipe]);
+    }
 }
