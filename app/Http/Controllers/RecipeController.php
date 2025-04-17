@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Favourite;
 use App\Models\Ingredient;
 use App\Models\IngredientQuantity;
+use App\Models\RecipeIngredient;
+use Illuminate\Support\Facades\DB;
 
 class RecipeController extends Controller
 {
@@ -328,7 +330,7 @@ class RecipeController extends Controller
     {
         $user = $request->user();
         $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
-    
+
         $validated = $request->validate([
             'names' => 'required|array|min:1',
             'names.*.language' => 'required|string|max:2',
@@ -350,7 +352,7 @@ class RecipeController extends Controller
             'is_official' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
         ]);
-    
+
         // Procesar imagen (si existe)
         $imagePath = null;
         if ($request->hasFile('image')) {
@@ -359,7 +361,7 @@ class RecipeController extends Controller
             $imagePath = $image->storeAs('recipes', $imageName, 'public');
             $imagePath = "/storage/{$imagePath}";
         }
-    
+
         // Crear la receta
         $recipe = Recipe::create([
             'creator_id' => $user->id,
@@ -367,7 +369,7 @@ class RecipeController extends Controller
             'is_official' => $validated['is_official'],
             'image_path' => $imagePath ?? null,
         ]);
-    
+
         // Guardar traducciones del nombre y descripción
         foreach ($validated['names'] as $index => $nameData) {
             $descriptionData = collect($validated['descriptions'])->firstWhere('language', $nameData['language']);
@@ -377,14 +379,14 @@ class RecipeController extends Controller
                 'description' => $descriptionData ? $descriptionData['description'] : '',
             ]);
         }
-    
+
         // Agrupar pasos por número (order) y luego traducirlos
         $stepsGrouped = collect($validated['steps'])->groupBy('order');
         foreach ($stepsGrouped as $stepNumber => $stepTranslations) {
             $recipeStep = $recipe->steps()->create([
                 'step_number' => $stepNumber,
             ]);
-    
+
             foreach ($stepTranslations as $translation) {
                 $recipeStep->translations()->create([
                     'language' => $translation['language'],
@@ -392,13 +394,13 @@ class RecipeController extends Controller
                 ]);
             }
         }
-    
+
         // Asociar ingredientes (por idioma, pero una sola relación con la receta)
         $uniqueIngredients = collect($validated['ingredients'])->pluck('id')->unique();
         foreach ($uniqueIngredients as $ingredientId) {
             $recipe->ingredients()->attach($ingredientId);
         }
-    
+
         // Guardar cantidades por idioma
         foreach ($validated['ingredients'] as $ingredient) {
             IngredientQuantity::create([
@@ -408,14 +410,141 @@ class RecipeController extends Controller
                 'quantity' => $ingredient['quantity'],
             ]);
         }
-    
+
         // Asociar tipos
         $recipe->types()->attach($validated['types']);
-    
+
         $message = $lang === 'es'
             ? 'Receta creada con éxito.'
             : 'Recipe created successfully.';
         return response()->json(['message' => $message, 'recipe' => $recipe], 201);
     }
-    
+
+    /**
+     * Update an existing recipe.
+     * This method updates the recipe's translations, steps, and ingredients.
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Recipe $recipe
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $recipe = Recipe::find($id);
+        if ($recipe === null) {
+            return response()->json(['error' => 'Receta no encontrada'], 404);
+        }
+        if ($recipe->creator_id !== $user->id) {
+            return response()->json(['error' => 'No tienes permiso para editar esta receta'], 403);
+        }
+
+        // Validar los datos de entrada
+        $validated = $request->validate([
+            'names' => 'required|array|min:1',
+            'names.*.language' => 'required|string|in:es,en',
+            'names.*.name' => 'required|string|max:255',
+
+            'descriptions' => 'required|array|min:1',
+            'descriptions.*.language' => 'required|string|in:es,en',
+            'descriptions.*.description' => 'required|string',
+
+            'ingredients' => 'required|array|min:1',
+            'ingredients.*.id' => 'required|integer|exists:ingredients,id',
+            'ingredients.*.quantity' => 'required|string|max:255',
+            'ingredients.*.language' => 'required|string|in:es,en',
+
+            'steps' => 'required|array|min:1',
+            'steps.*.language' => 'required|string|in:es,en',
+            'steps.*.order' => 'required|integer',
+            'steps.*.step' => 'required|string',
+
+            'types' => 'required|array|min:1',
+            'types.*' => 'required|integer|exists:types,id',
+
+            'is_private' => 'required|boolean',
+            'is_official' => 'required|boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
+        ]);
+
+        // Si hay nueva imagen
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = uniqid() . '.' . $image->getClientOriginalExtension();
+            $imagePath = $image->storeAs('recipes', $imageName, 'public');
+            $imagePath = '/storage/' . $imagePath;
+        } else {
+            $imagePath = $recipe->image_path;
+        }
+
+        // Actualizar receta principal
+        $recipe->update([
+            'is_private' => $validated['is_private'],
+            'is_official' => $validated['is_official'],
+            'image_path' => $imagePath,
+        ]);
+
+        // 1. Limpiar traducciones y recrear
+        $recipe->translations()->delete();
+        foreach ($validated['names'] as $nameData) {
+            $lang = $nameData['language'];
+            $name = $nameData['name'];
+            $desc = collect($validated['descriptions'])->firstWhere('language', $lang)['description'] ?? '';
+            $recipe->translations()->create([
+                'language' => $lang,
+                'name' => $name,
+                'description' => $desc,
+            ]);
+        }
+
+        // 2. Limpiar relaciones de ingredientes
+        DB::table('recipe_ingredients')->where('recipe_id', $recipe->id)->delete();
+        IngredientQuantity::where('recipe_id', $recipe->id)->delete();
+
+        // Evitar duplicados en recipe_ingredients
+        $uniqueIngredientIds = collect($validated['ingredients'])
+            ->pluck('id')
+            ->unique();
+
+        foreach ($uniqueIngredientIds as $ingredientId) {
+            DB::table('recipe_ingredients')->insert([
+                'recipe_id' => $recipe->id,
+                'ingredient_id' => $ingredientId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Insertar cantidades por idioma
+        foreach ($validated['ingredients'] as $ing) {
+            IngredientQuantity::create([
+                'ingredient_id' => $ing['id'],
+                'recipe_id' => $recipe->id,
+                'quantity' => $ing['quantity'],
+                'language' => $ing['language'],
+            ]);
+        }
+
+        // 3. Limpiar pasos y sus traducciones
+        $recipe->steps->each(function ($step) {
+            $step->translations()->where('recipe_step_id', $step->id)->delete();
+        });
+        $recipe->steps()->where('recipe_id', $recipe->id)->delete();
+
+        $stepGroups = collect($validated['steps'])->groupBy('order');
+        foreach ($stepGroups as $order => $translations) {
+            $step = $recipe->steps()->create(['step_number' => $order]);
+            foreach ($translations as $trans) {
+                $step->translations()->create([
+                    'language' => $trans['language'],
+                    'step_description' => $trans['step'],
+                ]);
+            }
+        }
+
+        // Actualizar tipos
+        $recipe->types()->sync($validated['types']);
+
+        return response()->json(['message' => 'Receta actualizada con éxito', 'recipe' => $recipe->fresh()]);
+    }
 }
