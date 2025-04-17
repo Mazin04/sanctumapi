@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\RecipeTranslation; 
+use App\Models\RecipeTranslation;
 
 class Recipe extends Model
 {
@@ -16,7 +16,7 @@ class Recipe extends Model
         'is_official',
         'image_path',
     ];
-    
+
 
     /**
      * Get the user that created the recipe.
@@ -38,6 +38,16 @@ class Recipe extends Model
             ->withPivot('quantity')
             ->withTimestamps();
     }
+
+    /**
+     * Get the ingredient quantities associated with the recipe.
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function ingredientQuantities()
+    {
+        return $this->hasMany(IngredientQuantity::class);
+    }
+
 
     /**
      * Get the types associated with the recipe.

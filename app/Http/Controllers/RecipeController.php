@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Recipe;
 use Illuminate\Http\Request;
 use App\Models\Favourite;
+use App\Models\Ingredient;
 
 class RecipeController extends Controller
 {
@@ -41,16 +42,16 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) {
+            ->map(function ($recipe) use ($lang) {
                 return [
                     'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                    'description' => $recipe->translations->first()->description ?? null,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => asset($recipe->image_path),
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                 ];
             });
 
@@ -90,16 +91,16 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) {
+            ->map(function ($recipe) use ($lang) {
                 return [
                     'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                    'description' => $recipe->translations->first()->description ?? null,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => asset($recipe->image_path),
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                 ];
             });
 
@@ -136,16 +137,16 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) {
+            ->map(function ($recipe) use ($lang) {
                 return [
                     'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                    'description' => $recipe->translations->first()->description ?? null,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => asset($recipe->image_path),
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                 ];
             });
 
@@ -180,16 +181,16 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) {
+            ->map(function ($recipe) use ($lang) {
                 return [
                     'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                    'description' => $recipe->translations->first()->description ?? null,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => asset($recipe->image_path),
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                 ];
             });
 
@@ -235,16 +236,16 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) {
+            ->map(function ($recipe) use ($lang) {
                 return [
                     'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                    'description' => $recipe->translations->first()->description ?? null,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => asset($recipe->image_path),
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                 ];
             });
 
@@ -293,16 +294,16 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) {
+            ->map(function ($recipe) use ($lang) {
                 return [
                     'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? 'Sin traducción',
-                    'description' => $recipe->translations->first()->description ?? null,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => asset($recipe->image_path),
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                 ];
             });
 
@@ -327,6 +328,7 @@ class RecipeController extends Controller
             'ingredients' => 'required|array|min:1',
             'ingredients.*.id' => 'required|integer|exists:ingredients,id',
             'ingredients.*.quantity' => 'required|string|max:255',
+            'ingredients.*.language' => 'required|string|max:2',
             'steps' => 'required|array|min:1',
             'steps.*' => 'string',
             'types' => 'required|array|min:1',
@@ -370,7 +372,13 @@ class RecipeController extends Controller
         }
 
         foreach ($validated['ingredients'] as $ingredient) {
-            $recipe->ingredients()->attach($ingredient['id'], ['quantity' => $ingredient['quantity']]);
+            // Asociamos el ingrediente y la cantidad
+            $ingredientModel = Ingredient::find($ingredient['id']);
+            $ingredientModel->quantities()->create([
+                'quantity' => $ingredient['quantity'],
+                'language' => $ingredient['language'],
+                'recipe_id' => $recipe->id,
+            ]);
         }
 
         $recipe->types()->attach($validated['types']);

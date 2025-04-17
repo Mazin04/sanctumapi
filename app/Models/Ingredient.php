@@ -17,10 +17,16 @@ class Ingredient extends Model
      * Get the recipes associated with the ingredient.
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
-    public function recipes()
+    public function recipes($language = 'es')
     {
         return $this->belongsToMany(Recipe::class, 'recipe_ingredients')
-            ->withPivot('quantity')
+            ->withPivot('quantity')  // Incluye la cantidad en el pivot
             ->withTimestamps();
+    }
+    
+
+    public function quantities()
+    {
+        return $this->hasMany(IngredientQuantity::class);
     }
 }
