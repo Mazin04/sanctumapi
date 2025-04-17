@@ -12,7 +12,6 @@ class RecipeStep extends Model
     protected $fillable = [
         'recipe_id',
         'step_number',
-        'description',
     ];
 
     /**

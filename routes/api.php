@@ -45,4 +45,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // CRUD Recipes
     Route::post('/recipes', [RecipeController::class, 'store']);
+    Route::put('/recipes/{id}', [RecipeController::class, 'update']);
 });

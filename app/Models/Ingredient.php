@@ -24,7 +24,6 @@ class Ingredient extends Model
             ->withTimestamps();
     }
     
-
     public function quantities()
     {
         return $this->hasMany(IngredientQuantity::class);

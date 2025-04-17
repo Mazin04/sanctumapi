@@ -318,6 +318,12 @@ class RecipeController extends Controller
         return response()->json($recipes);
     }
 
+    /**
+     * Store a new recipe.
+     * This method creates a new recipe with its translations, steps, and ingredients.
+     * @param \Illuminate\Http\Request $request
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $user = $request->user();
@@ -351,7 +357,7 @@ class RecipeController extends Controller
             $image = $request->file('image');
             $imageName = uniqid() . '.' . $image->getClientOriginalExtension();
             $imagePath = $image->storeAs('recipes', $imageName, 'public');
-            $imagePath = '/storage/' . $imagePath;
+            $imagePath = "/storage/{$imagePath}";
         }
     
         // Crear la receta
