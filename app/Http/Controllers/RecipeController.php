@@ -84,6 +84,7 @@ class RecipeController extends Controller
             ->orWhereHas('usersWhoFavourited', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
+            ->orWhere('creator_id', $user->id)
             ->with([
                 'translations' => function ($query) use ($lang) {
                     $query->where('language', $lang);
