@@ -600,22 +600,12 @@ class RecipeController extends Controller
         $lang = $request->input('lang', 'es'); // Idioma por defecto
 
         $recipe = Recipe::with([
-            'translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            },
-            'recipeSteps.translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            },
-            'ingredients.translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            },
-            'types.translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            },
-            'ingredientQuantities' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            }
-        ])->find($id);
+            'translations' => fn($q) => $q->where('language', $lang),
+            'recipeSteps.translations' => fn($q) => $q->where('language', $lang),
+            'ingredients.translations' => fn($q) => $q->where('language', $lang),
+            'types.translations' => fn($q) => $q->where('language', $lang),
+            'creator'
+        ])->find($id);        
 
         if ($recipe === null) {
             $message = $lang === 'es'
@@ -638,7 +628,10 @@ class RecipeController extends Controller
             'description' => $translation->description ?? '',
             'image' => $recipe->image_path,
             'is_official' => $recipe->is_official,
-            'creator_id' => $recipe->creator_id,
+            'creator' => [
+                'id' => $recipe->creator_id,
+                'name'=> $recipe->creator->name ??'',
+            ],
             'is_private' => $recipe->is_private,
             'types' => $recipe->types->pluck('translations')->flatten()->pluck('name'),
             'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($recipe, $lang) {

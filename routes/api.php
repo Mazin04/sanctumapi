@@ -44,9 +44,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/recipes/{id}/favourite', [FavouriteController::class, 'addToFavourites']);
 
     // CRUD Recipes
+    Route::get('/recipes/{id}', [RecipeController::class, 'show']);
     Route::post('/recipes', [RecipeController::class, 'store']);
     Route::put('/recipes/{id}', [RecipeController::class, 'update']);
     Route::delete('/recipes/{id}', [RecipeController::class,'destroy']);
 
-    Route::get('/recipes/{id}', [RecipeController::class, 'show']);
+    // Ideas
+    // Obtener las recetas publicas de un usuario
+    // Route::get('/user/{id}/public-recipes', [RecipeController::class, 'getPublicRecipesByUserId']);
 });
