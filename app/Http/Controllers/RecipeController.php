@@ -593,4 +593,72 @@ class RecipeController extends Controller
             : 'Recipe deleted successfully.';
         return response()->json(['message' => $message], 200);
     }
+
+    public function show(Request $request, $id)
+    {
+        $user = $request->user();
+        $lang = $request->input('lang', 'es'); // Idioma por defecto
+
+        $recipe = Recipe::with([
+            'translations' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            },
+            'recipeSteps.translations' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            },
+            'ingredients.translations' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            },
+            'types.translations' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            },
+            'ingredientQuantities' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            }
+        ])->find($id);
+
+        if ($recipe === null) {
+            $message = $lang === 'es'
+                ? 'Receta no encontrada.'
+                : 'Recipe not found.';
+            return response()->json(['error' => $message], 404);
+        }
+
+        if ($recipe->creator_id !== $user->id && !$recipe->is_official) {
+            $message = $lang === 'es'
+                ? 'No tienes permiso para ver esta receta.'
+                : 'You do not have permission to view this recipe.';
+            return response()->json(['error' => $message], 403);
+        }
+
+        $translation = $recipe->translations->first();
+
+        $response = [
+            'name' => $translation->name ?? '',
+            'description' => $translation->description ?? '',
+            'image' => $recipe->image_path,
+            'is_official' => $recipe->is_official,
+            'creator_id' => $recipe->creator_id,
+            'is_private' => $recipe->is_private,
+            'types' => $recipe->types->pluck('translations')->flatten()->pluck('name'),
+            'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($recipe, $lang) {
+                $quantity = $recipe->ingredientQuantities
+                    ->where('ingredient_id', $ingredient->id)
+                    ->where('language', $lang)
+                    ->first();
+
+                return [
+                    'name' => $ingredient->translations->first()?->name ?? '',
+                    'quantity' => $quantity?->quantity ?? '',
+                ];
+            }),
+
+            'steps' => $recipe->recipeSteps->sortBy('step_number')->map(function ($step) {
+                $trans = $step->translations->first();
+                return $trans?->step_description ?? '';
+            })->values(),
+        ];
+
+        return response()->json($response);
+    }
 }
