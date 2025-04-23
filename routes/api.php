@@ -19,7 +19,6 @@ use App\Http\Controllers\RecipeController;
 */
 
 Route::post('register', [AuthController::class, 'register']);
-Route::get('logout', [AuthController::class, 'logout']);
 Route::post('login', [AuthController::class, 'login']);
 Route::get('translations/{language}', [TranslationController::class, 'getTranslations']);
 

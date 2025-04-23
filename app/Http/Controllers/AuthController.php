@@ -19,7 +19,9 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+            'errors' => $validator->errors()->messages()
+            ], 422);
         }
 
         $user = User::create([
@@ -35,8 +37,12 @@ class AuthController extends Controller
     
     public function login(Request $request)
     {
-        if(!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+        if (empty($request->email) || empty($request->password)) {
+            return response()->json(['message' => 'unauthorized'], 401);
+        }
+
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json(['message' => 'passwordUserMismatch'], 401);
         }
 
         $user = User::where('email', $request['email'])->firstOrFail();
@@ -59,7 +65,7 @@ class AuthController extends Controller
         Cookie::queue(Cookie::forget('XSRF-TOKEN'));
         Cookie::queue(Cookie::forget('laravel_session'));
         
-        return response()->json(['message' => 'Logged out successfully']);
+        return response()->json(['message' => 'logoutSuccess']);
     }
 
     public function user(Request $request)
