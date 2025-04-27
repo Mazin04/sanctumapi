@@ -51,7 +51,9 @@ class User extends Authenticatable
 
     public function ingredients()
     {
-        return $this->belongsToMany(Ingredient::class, 'user_ingredients');
+        return $this->belongsToMany(Ingredient::class, 'user_ingredients')
+                    ->withPivot('quantity', 'unit')
+                    ->withTimestamps();
     }
 
     public function favourites()

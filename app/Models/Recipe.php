@@ -42,11 +42,10 @@ class Recipe extends Model
      * Get the ingredient quantities associated with the recipe.
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-    public function ingredientQuantities()
+    public function ingredientsQuantities()
     {
-        return $this->hasMany(IngredientQuantity::class);
+        return $this->hasMany(IngredientQuantity::class, 'recipe_id');
     }
-
 
     /**
      * Get the types associated with the recipe.

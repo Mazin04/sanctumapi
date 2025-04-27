@@ -14,6 +14,58 @@ use App\Models\UserIngredient;
 class RecipeController extends Controller
 {
     /**
+     * Gets the ingredient match status for a recipe based on user ingredients.
+     * @param mixed $recipe
+     * @param mixed $userIngredients
+     * @param mixed $lang
+     * @return string
+     */
+    public function getIngredientMatch($recipe, $userIngredients, $lang = 'es')
+    {
+        $sufficient = 0;
+        $insufficient = 0;
+        $missing = 0;
+        $unitMismatch = 0;
+
+        foreach ($recipe->ingredientsQuantities as $ingredientQuantity) {
+            $ingredientId = $ingredientQuantity->ingredient_id;
+            $requiredQuantity = $ingredientQuantity->quantity;
+            $requiredUnit = strtolower($ingredientQuantity->unit);
+
+            $userIngredient = $userIngredients->get($ingredientId);
+
+            if (!$userIngredient) {
+                $missing++;
+                continue;
+            }
+
+            // Si las unidades son diferentes
+            if (strtolower($userIngredient->pivot->unit) !== $requiredUnit) {
+                $unitMismatch++;
+                continue;
+            }
+
+            if ($userIngredient->pivot->quantity >= $requiredQuantity) {
+                $sufficient++;
+            } else {
+                $insufficient++;
+            }
+        }
+
+        if ($missing > 0) {
+            $ingredientsMatch = $lang === 'es' ? 'NO TIENE' : 'MISSING';
+        } elseif ($unitMismatch > 0) {
+            $ingredientsMatch = $lang === 'es' ? 'UNIDADES DISTINTAS' : 'DIFFERENT UNITS';
+        } elseif ($insufficient > 0) {
+            $ingredientsMatch = $lang === 'es' ? 'NO SUFICIENTE' : 'NOT ENOUGH';
+        } else {
+            $ingredientsMatch = $lang === 'es' ? 'PUEDE HACERLO' : 'CAN MAKE';
+        }
+
+        return $ingredientsMatch;
+    }
+
+    /**
      * Filter recipes by ingredients.
      * This method retrieves recipes that contain at least one of the specified ingredients.
      * @param \Illuminate\Http\Request $request
@@ -22,76 +74,69 @@ class RecipeController extends Controller
     public function filterByIngredient(Request $request)
     {
         $user = $request->user();
-        $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
-    
-        // Ingredientes que pasa en la request
+        $lang = $request->input('lang', 'es'); // idioma por defecto
+
         $ingredientIDs = $request->input('ingredients');
-    
+
         if (!is_array($ingredientIDs) || empty($ingredientIDs)) {
             $message = $lang === 'es'
                 ? 'Debes proporcionar al menos un ingrediente.'
                 : 'You must provide at least one ingredient.';
-    
+
             return response()->json(['error' => $message], 400);
         }
-    
-        // Ingredientes del usuario
-        $userIngredientIDs = $user->ingredients->pluck('id')->toArray();
-    
-        // Buscar recetas que contengan TODOS los ingredientes pasados
+
+        // Buscamos recetas que contengan los ingredientes pedidos
         $recipes = Recipe::whereHas('ingredients', function ($query) use ($ingredientIDs) {
             $query->whereIn('ingredient_id', $ingredientIDs);
-        }, '=', count($ingredientIDs)) // <= MUY IMPORTANTE: solo recetas que tengan exactamente esos ingredientes
-        ->with([
-            'ingredients:id',
-            'translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            },
-            'recipeSteps',
-            'types.translations' => function ($query) use ($lang) {
-                $query->where('language', $lang);
-            }
-        ])
-        ->get()
-        ->map(function ($recipe) use ($lang, $userIngredientIDs) {
-            $recipeIngredientIds = $recipe->ingredients->pluck('id')->toArray();
-    
-            $matchedIngredients = array_intersect($recipeIngredientIds, $userIngredientIDs);
-    
-            if (count($matchedIngredients) === count($recipeIngredientIds)) {
-                $ingredientsMatch = $lang === 'es' ? 'TODOS' : 'ALL';
-            } elseif (count($matchedIngredients) > 0) {
-                $ingredientsMatch = $lang === 'es' ? 'ALGUNOS' : 'SOME';
-            } else {
-                $ingredientsMatch = $lang === 'es' ? 'NINGUNO' : 'NONE';
-            }
-    
-            return [
-                'id' => $recipe->id,
-                'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                'image' => $recipe->image_path ? asset($recipe->image_path) : null,
-                'is_official' => $recipe->is_official,
-                'is_private' => $recipe->is_private,
-                'steps_count' => $recipe->recipeSteps->count(),
-                'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
-                'ingredients_match' => $ingredientsMatch,
-            ];
-        });
-    
+        })
+            ->where(function ($query) use ($user) {
+                $query->where('is_private', false)
+                    ->orWhere('creator_id', $user->id)
+                    ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    });
+            })
+            ->with([
+                'ingredients' => function ($query) {
+                    $query->select('ingredients.id');
+                },
+                'ingredientsQuantities',
+                'translations' => function ($query) use ($lang) {
+                    $query->where('language', $lang);
+                },
+                'recipeSteps',
+                'types.translations' => function ($query) use ($lang) {
+                    $query->where('language', $lang);
+                }
+            ])
+            ->get()
+            ->map(function ($recipe) use ($user, $lang) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
+                return [
+                    'id' => $recipe->id,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
+                    'is_official' => $recipe->is_official,
+                    'is_private' => $recipe->is_private,
+                    'steps_count' => $recipe->recipeSteps->count(),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
+                ];
+            });
+
         if ($recipes->isEmpty()) {
             $message = $lang === 'es'
-                ? 'No se encontraron recetas con los ingredientes proporcionados.'
-                : 'No recipes found with the provided ingredients.';
-    
+                ? 'No se encontraron recetas con esos ingredientes.'
+                : 'No recipes found with those ingredients.';
+
             return response()->json(['error' => $message], 404);
         }
-    
+
         return response()->json($recipes);
     }
-    
 
-    
     /**
      * Get all recipes for the authenticated user.
      * This includes official recipes and those favorited by the user.
@@ -103,11 +148,11 @@ class RecipeController extends Controller
         $user = $request->user();
         $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
 
-        $recipes = Recipe::where('is_official', true)
-            ->orWhereHas('usersWhoFavourited', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
+        $recipes = Recipe::where('is_private', false)
             ->orWhere('creator_id', $user->id)
+            ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
             ->with([
                 'translations' => function ($query) use ($lang) {
                     $query->where('language', $lang);
@@ -118,7 +163,9 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) use ($lang) {
+            ->map(function ($recipe) use ($lang, $user) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
+
                 return [
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
@@ -128,6 +175,7 @@ class RecipeController extends Controller
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
                 ];
             });
 
@@ -164,7 +212,8 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) use ($lang) {
+            ->map(function ($recipe) use ($lang, $user) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
                 return [
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
@@ -174,6 +223,7 @@ class RecipeController extends Controller
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
                 ];
             });
 
@@ -208,7 +258,8 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) use ($lang) {
+            ->map(function ($recipe) use ($lang, $user) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
                 return [
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
@@ -218,6 +269,7 @@ class RecipeController extends Controller
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
                 ];
             });
 
@@ -241,6 +293,7 @@ class RecipeController extends Controller
     {
         $lang = $request->input('lang', 'es'); // idioma por defecto
         $name = $request->input('name');
+        $user = $request->user();
 
         if (!$name) {
             $message = $lang === 'es'
@@ -253,6 +306,13 @@ class RecipeController extends Controller
             $query->where('language', $lang)
                 ->where('name', 'like', '%' . $name . '%');
         })
+            ->where(function ($query) use ($user) {
+                $query->where('is_private', false)
+                    ->orWhere('creator_id', $user->id)
+                    ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    });
+            })
             ->with([
                 'translations' => function ($query) use ($lang) {
                     $query->where('language', $lang);
@@ -263,7 +323,8 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) use ($lang) {
+            ->map(function ($recipe) use ($lang, $user) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
                 return [
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
@@ -273,6 +334,7 @@ class RecipeController extends Controller
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
                 ];
             });
 
@@ -289,6 +351,7 @@ class RecipeController extends Controller
 
     /**
      * Get recipes by type.
+     * Recipes must be public or favourited by the user.
      * @param \Illuminate\Http\Request $request
      * @return mixed|\Illuminate\Http\JsonResponse
      */
@@ -306,11 +369,16 @@ class RecipeController extends Controller
         }
 
         $recipes = Recipe::where(function ($query) use ($user) {
-            $query->where('is_official', true)
+            $query->where('is_private', false)
+                ->orWhere('creator_id', $user->id)
                 ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 });
         })
+            ->whereHas('types.translations', function ($query) use ($typeName, $lang) {
+                $query->where('language', $lang)
+                    ->where('name', 'like', '%' . $typeName . '%');
+            })
             ->with([
                 'translations' => function ($query) use ($lang) {
                     $query->where('language', $lang);
@@ -321,7 +389,8 @@ class RecipeController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($recipe) use ($lang) {
+            ->map(function ($recipe) use ($lang, $user) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
                 return [
                     'id' => $recipe->id,
                     'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
@@ -331,6 +400,7 @@ class RecipeController extends Controller
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
                 ];
             });
 
@@ -346,22 +416,51 @@ class RecipeController extends Controller
 
     public function recipesAvailableForUser(Request $request)
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
         // Obtener los IDs de ingredientes que tiene el usuario
-        $userIngredientIds = UserIngredient::where('user_id', $userId)
+        $userIngredientIds = UserIngredient::where('user_id', $user->id)
             ->pluck('ingredient_id')
             ->toArray();
 
         // Obtener todas las recetas
-        $recipes = Recipe::with('ingredients')->get();
+        $recipes = Recipe::with('ingredients')
+            ->where(function ($query) use ($user) {
+            $query->where('is_private', false)
+                ->orWhere('creator_id', $user->id)
+                ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+                });
+            })
+            ->get();
 
-        // Filtrar recetas: quedarse solo con las que el usuario tiene todos los ingredientes
-        $availableRecipes = $recipes->filter(function ($recipe) use ($userIngredientIds) {
-            $recipeIngredientIds = $recipe->ingredients->pluck('id')->toArray();
-            return empty(array_diff($recipeIngredientIds, $userIngredientIds));
+        // Filtrar recetas: quedarse solo con las que el usuario puede hacer
+        $availableRecipes = $recipes->filter(function ($recipe) use ($user) {
+            $userIngredients = $user->ingredients->keyBy('id');
+            $ingredientsMatch = $this->getIngredientMatch($recipe, $userIngredients);
+            return $ingredientsMatch === 'PUEDE HACERLO' || $ingredientsMatch === 'CAN MAKE';
         });
 
-        return $availableRecipes->values(); // Para resetear índices
+        if ($availableRecipes->isEmpty()) {
+            $message = $request->input('lang', 'es') === 'es'
+                ? 'No tienes ingredientes suficientes para ninguna receta.'
+                : 'You do not have enough ingredients for any recipe.';
+
+            return response()->json(['error' => $message], 404);
+        }
+
+        return response()->json($availableRecipes->map(function ($recipe) use ($user) {
+            return [
+                'id' => $recipe->id,
+                'name' => $recipe->translations->first()->name ?? 'Sin traducción',
+                'description' => $recipe->translations->first()->description ?? 'Sin traducción',
+                'image' => $recipe->image_path ? asset($recipe->image_path) : null,
+                'is_official' => $recipe->is_official,
+                'is_private' => $recipe->is_private,
+                'steps_count' => $recipe->recipeSteps->count(),
+                'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
+                'ingredients_match' => $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id')),
+            ];
+        }));
     }
 
     /**
@@ -385,7 +484,7 @@ class RecipeController extends Controller
             'ingredients' => 'required|array|min:1',
             'ingredients.*.id' => 'required|integer|exists:ingredients,id',
             'ingredients.*.quantity' => 'required|string|max:255',
-            'ingredients.*.language' => 'required|string|max:2',
+            'ingredients.*.unit' => 'required|string|max:20',
             'steps' => 'required|array|min:1',
             'steps.*.language' => 'required|string|max:2',
             'steps.*.order' => 'required|integer',
@@ -450,8 +549,8 @@ class RecipeController extends Controller
             IngredientQuantity::create([
                 'ingredient_id' => $ingredient['id'],
                 'recipe_id' => $recipe->id,
-                'language' => $ingredient['language'],
                 'quantity' => $ingredient['quantity'],
+                'unit' => $ingredient['unit'] ?? null,
             ]);
         }
 
@@ -503,7 +602,7 @@ class RecipeController extends Controller
             'ingredients' => 'required|array|min:1',
             'ingredients.*.id' => 'required|integer|exists:ingredients,id',
             'ingredients.*.quantity' => 'required|string|max:255',
-            'ingredients.*.language' => 'required|string|in:es,en',
+            'ingredients.*.unit' => 'required|string|max:20',
 
             'steps' => 'required|array|min:1',
             'steps.*.language' => 'required|string|in:es,en',
@@ -572,7 +671,7 @@ class RecipeController extends Controller
                 'ingredient_id' => $ing['id'],
                 'recipe_id' => $recipe->id,
                 'quantity' => $ing['quantity'],
-                'language' => $ing['language'],
+                'unit' => $ing['unit'],
             ]);
         }
 
@@ -647,6 +746,7 @@ class RecipeController extends Controller
             'recipeSteps.translations' => fn($q) => $q->where('language', $lang),
             'ingredients.translations' => fn($q) => $q->where('language', $lang),
             'types.translations' => fn($q) => $q->where('language', $lang),
+            'ingredientsQuantities',
             'creator'
         ])->find($id);
 
@@ -677,15 +777,14 @@ class RecipeController extends Controller
             ],
             'is_private' => $recipe->is_private,
             'types' => $recipe->types->pluck('translations')->flatten()->pluck('name'),
-            'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($recipe, $lang) {
-                $quantity = $recipe->ingredientQuantities
+            'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($recipe) {
+                $quantity = $recipe->ingredientsQuantities
                     ->where('ingredient_id', $ingredient->id)
-                    ->where('language', $lang)
                     ->first();
-
                 return [
-                    'name' => $ingredient->translations->first()?->name ?? '',
-                    'quantity' => $quantity?->quantity ?? '',
+                    'name' => $ingredient->translations->first()->name ?? '',
+                    'quantity' => $quantity->quantity ?? '',
+                    'unit' => $quantity->unit ?? '',
                 ];
             }),
 
@@ -693,6 +792,7 @@ class RecipeController extends Controller
                 $trans = $step->translations->first();
                 return $trans?->step_description ?? '';
             })->values(),
+            'ingredients_match' => $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang),
         ];
 
         return response()->json($response);

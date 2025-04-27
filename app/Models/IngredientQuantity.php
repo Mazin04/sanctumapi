@@ -13,7 +13,7 @@ class IngredientQuantity extends Model
         'ingredient_id',
         'recipe_id',
         'quantity',
-        'language',
+        'unit',
     ];
 
     public function ingredient()
