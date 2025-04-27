@@ -9,6 +9,7 @@ use App\Models\Ingredient;
 use App\Models\IngredientQuantity;
 use App\Models\RecipeIngredient;
 use Illuminate\Support\Facades\DB;
+use App\Models\UserIngredient;
 
 class RecipeController extends Controller
 {
@@ -22,53 +23,75 @@ class RecipeController extends Controller
     {
         $user = $request->user();
         $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
+    
+        // Ingredientes que pasa en la request
         $ingredientIDs = $request->input('ingredients');
-
+    
         if (!is_array($ingredientIDs) || empty($ingredientIDs)) {
             $message = $lang === 'es'
                 ? 'Debes proporcionar al menos un ingrediente.'
                 : 'You must provide at least one ingredient.';
-
+    
             return response()->json(['error' => $message], 400);
         }
-
+    
+        // Ingredientes del usuario
+        $userIngredientIDs = $user->ingredients->pluck('id')->toArray();
+    
+        // Buscar recetas que contengan TODOS los ingredientes pasados
         $recipes = Recipe::whereHas('ingredients', function ($query) use ($ingredientIDs) {
             $query->whereIn('ingredient_id', $ingredientIDs);
-        })
-            ->with([
-                'translations' => function ($query) use ($lang) {
-                    $query->where('language', $lang);
-                },
-                'recipeSteps',
-                'types.translations' => function ($query) use ($lang) {
-                    $query->where('language', $lang);
-                }
-            ])
-            ->get()
-            ->map(function ($recipe) use ($lang) {
-                return [
-                    'id' => $recipe->id,
-                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
-                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
-                    'is_official' => $recipe->is_official,
-                    'is_private' => $recipe->is_private,
-                    'steps_count' => $recipe->recipeSteps->count(),
-                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
-                ];
-            });
-
+        }, '=', count($ingredientIDs)) // <= MUY IMPORTANTE: solo recetas que tengan exactamente esos ingredientes
+        ->with([
+            'ingredients:id',
+            'translations' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            },
+            'recipeSteps',
+            'types.translations' => function ($query) use ($lang) {
+                $query->where('language', $lang);
+            }
+        ])
+        ->get()
+        ->map(function ($recipe) use ($lang, $userIngredientIDs) {
+            $recipeIngredientIds = $recipe->ingredients->pluck('id')->toArray();
+    
+            $matchedIngredients = array_intersect($recipeIngredientIds, $userIngredientIDs);
+    
+            if (count($matchedIngredients) === count($recipeIngredientIds)) {
+                $ingredientsMatch = $lang === 'es' ? 'TODOS' : 'ALL';
+            } elseif (count($matchedIngredients) > 0) {
+                $ingredientsMatch = $lang === 'es' ? 'ALGUNOS' : 'SOME';
+            } else {
+                $ingredientsMatch = $lang === 'es' ? 'NINGUNO' : 'NONE';
+            }
+    
+            return [
+                'id' => $recipe->id,
+                'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                'image' => $recipe->image_path ? asset($recipe->image_path) : null,
+                'is_official' => $recipe->is_official,
+                'is_private' => $recipe->is_private,
+                'steps_count' => $recipe->recipeSteps->count(),
+                'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                'ingredients_match' => $ingredientsMatch,
+            ];
+        });
+    
         if ($recipes->isEmpty()) {
             $message = $lang === 'es'
-                ? 'No se encontraron recetas con esos ingredientes.'
-                : 'No recipes found with those ingredients.';
-
+                ? 'No se encontraron recetas con los ingredientes proporcionados.'
+                : 'No recipes found with the provided ingredients.';
+    
             return response()->json(['error' => $message], 404);
         }
-
+    
         return response()->json($recipes);
     }
+    
 
+    
     /**
      * Get all recipes for the authenticated user.
      * This includes official recipes and those favorited by the user.
@@ -319,6 +342,26 @@ class RecipeController extends Controller
         }
 
         return response()->json($recipes);
+    }
+
+    public function recipesAvailableForUser(Request $request)
+    {
+        $userId = $request->user()->id;
+        // Obtener los IDs de ingredientes que tiene el usuario
+        $userIngredientIds = UserIngredient::where('user_id', $userId)
+            ->pluck('ingredient_id')
+            ->toArray();
+
+        // Obtener todas las recetas
+        $recipes = Recipe::with('ingredients')->get();
+
+        // Filtrar recetas: quedarse solo con las que el usuario tiene todos los ingredientes
+        $availableRecipes = $recipes->filter(function ($recipe) use ($userIngredientIds) {
+            $recipeIngredientIds = $recipe->ingredients->pluck('id')->toArray();
+            return empty(array_diff($recipeIngredientIds, $userIngredientIds));
+        });
+
+        return $availableRecipes->values(); // Para resetear índices
     }
 
     /**
@@ -605,7 +648,7 @@ class RecipeController extends Controller
             'ingredients.translations' => fn($q) => $q->where('language', $lang),
             'types.translations' => fn($q) => $q->where('language', $lang),
             'creator'
-        ])->find($id);        
+        ])->find($id);
 
         if ($recipe === null) {
             $message = $lang === 'es'
@@ -630,7 +673,7 @@ class RecipeController extends Controller
             'is_official' => $recipe->is_official,
             'creator' => [
                 'id' => $recipe->creator_id,
-                'name'=> $recipe->creator->name ??'',
+                'name' => $recipe->creator->name ?? '',
             ],
             'is_private' => $recipe->is_private,
             'types' => $recipe->types->pluck('translations')->flatten()->pluck('name'),

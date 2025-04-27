@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/recipes/filter-by-ingredient', [RecipeController::class, 'filterByIngredient']);
     Route::post('/recipes/byName', [RecipeController::class, 'getRecipesByName']);
     Route::post('/recipes/byType', [RecipeController::class, 'getRecipesByType']);
+    Route::post('/recipes/available', [RecipeController::class, 'recipesAvailableForUser']);
 
     // User Recipes
     Route::post('/user/allRecipes', [RecipeController::class, 'getAllUsersRecipes']);
