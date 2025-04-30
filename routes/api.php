@@ -21,6 +21,7 @@ use App\Http\Controllers\RecipeController;
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::get('translations/{language}', [TranslationController::class, 'getTranslations']);
+Route::get('email/registered', [AuthController::class, 'isEmailRegistered']);
 
 
 Route::middleware('auth:sanctum')->group(function () {

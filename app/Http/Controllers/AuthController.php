@@ -72,4 +72,16 @@ class AuthController extends Controller
     {
         return response()->json($request->user());
     }
+
+    public function isEmailRegistered(Request $request)
+    {
+        $email = $request->input('email');
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            return response()->json(['registered' => true]);
+        } else {
+            return response()->json(['registered' => false]);
+        }
+    }
 }
