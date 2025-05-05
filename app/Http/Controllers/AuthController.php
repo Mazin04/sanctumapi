@@ -7,28 +7,43 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Http;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(),[
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255',
             'password' => 'required|string|min:8',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-            'errors' => $validator->errors()->messages()
+                'errors' => $validator->errors()->messages()
             ], 422);
         }
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
+        $user = User::where('email', $request->email)->first();
+
+        if ($user) {
+            if ($user->google_id) {
+                $user->update([
+                    'name' => $request->name,
+                    'password' => bcrypt($request->password),
+                    'google_id' => null, // Clear google_id if switching to password-based login
+                ]);
+            } else {
+                return response()->json(['message' => 'Email already registered'], 409);
+            }
+        } else {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => bcrypt($request->password),
+            ]);
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

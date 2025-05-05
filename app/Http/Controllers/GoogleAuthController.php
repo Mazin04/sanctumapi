@@ -38,7 +38,13 @@ class GoogleAuthController extends Controller
         }
 
         Auth::login($user);
+        return redirect(config('app.frontend_url') . "/home");
+    }
 
-        return redirect(config('app.frontend_url') . "/example");
+    public function avatar(Request $request)
+    {
+        $user = $request->user();
+        $avatarUrl = $user->google_id ? "https://www.googleapis.com/oauth2/v1/userinfo?access_token={$user->google_id}" : null;
+        return response()->json(['avatar' => $avatarUrl]);
     }
 }
