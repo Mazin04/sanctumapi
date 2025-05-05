@@ -25,14 +25,15 @@ class GoogleAuthController extends Controller
 
         if ($user) {
             $user->google_id = $googleUser->id;
+            $user->avatar = $googleUser->avatar;
             $user->save();
         } else {
-            // User does not exist, create a new user
             $user = User::create([
                 'name' => $googleUser->name,
                 'email' => $googleUser->email,
                 'password' => null,
                 'google_id' => $googleUser->id,
+                'avatar' => $googleUser->avatar,
                 'email_verified_at' => now(),
             ]);
         }
@@ -41,10 +42,16 @@ class GoogleAuthController extends Controller
         return redirect(config('app.frontend_url') . "/home");
     }
 
-    public function avatar(Request $request)
+    public function avatar()
     {
-        $user = $request->user();
-        $avatarUrl = $user->google_id ? "https://www.googleapis.com/oauth2/v1/userinfo?access_token={$user->google_id}" : null;
-        return response()->json(['avatar' => $avatarUrl]);
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        return response()->json([
+            'avatar' => $user->avatar,
+        ]);
     }
 }
