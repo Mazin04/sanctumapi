@@ -272,14 +272,13 @@ class RecipeController extends Controller
                     'ingredients_match' => $ingredientsMatch,
                 ];
             });
-
-        if ($recipes->isEmpty()) {
-            $message = $lang === 'es'
+            if ($recipes->isEmpty()) {
+                $message = $lang === 'es'
                 ? 'No se encontraron recetas creadas por ti.'
                 : 'No recipes created by you found.';
 
-            return response()->json(['error' => $message], 404);
-        }
+                return response()->json(['message' => $message, 'recipes' => []], 200);
+            }
 
         return response()->json($recipes);
     }
