@@ -184,7 +184,7 @@ class RecipeController extends Controller
                 ? 'No se encontraron recetas.'
                 : 'No recipes found.';
 
-            return response()->json(['error' => $message], 404);
+            return response()->json(['message' => $message, 'recipes' => []], 200);
         }
 
         return response()->json($recipes);
@@ -232,7 +232,7 @@ class RecipeController extends Controller
                 ? 'No se encontraron recetas favoritas.'
                 : 'No favourite recipes found.';
 
-            return response()->json(['error' => $message], 404);
+            return response()->json(['message' => $message, 'recipes' => []], 200);
         }
 
         return response()->json($recipes);
