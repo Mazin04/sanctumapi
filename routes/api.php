@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FavouriteController;
+use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\RecipeController;
 
@@ -51,6 +52,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/recipes/{id}', [RecipeController::class, 'show']);
     Route::put('/recipes/{id}', [RecipeController::class, 'update']);
     Route::delete('/recipes/{id}', [RecipeController::class,'destroy']);
+
+    // CRUD Ingredients
+    Route::get('/ingredients', [IngredientController::class, 'index']);
+    Route::post('/ingredients', [IngredientController::class, 'store']);
+    Route::put('/ingredients/{id}', [IngredientController::class, 'update']);
+    Route::delete('/ingredients/{id}', [IngredientController::class, 'destroy']);
 
     // Ideas
     // Obtener las recetas publicas de un usuario
