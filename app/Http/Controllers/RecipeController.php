@@ -131,7 +131,7 @@ class RecipeController extends Controller
                 ? 'No se encontraron recetas con esos ingredientes.'
                 : 'No recipes found with those ingredients.';
 
-            return response()->json(['error' => $message], 404);
+            return response()->json(['error' => $message], 400);
         }
 
         return response()->json($recipes);
@@ -413,6 +413,12 @@ class RecipeController extends Controller
         return response()->json($recipes);
     }
 
+    /**
+     * Get recipes available for the authenticated user.
+     * This method retrieves recipes that the user can make based on their ingredients.
+     * @param \Illuminate\Http\Request $request
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function recipesAvailableForUser(Request $request)
     {
         $user = $request->user();
@@ -708,6 +714,13 @@ class RecipeController extends Controller
         ]);
     }
 
+    /**
+     * Delete a recipe.
+     * This method deletes the recipe and its associated data.
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function destroy(Request $request, $id)
     {
         $user = $request->user();
@@ -735,6 +748,13 @@ class RecipeController extends Controller
         return response()->json(['message' => $message], 200);
     }
 
+    /**
+     * Show a specific recipe.
+     * This method retrieves a recipe by its ID and checks permissions.
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function show(Request $request, $id)
     {
         $user = $request->user();

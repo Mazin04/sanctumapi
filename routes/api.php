@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/recipes/{id}', [RecipeController::class,'destroy']);
 
     // CRUD Ingredients
+    Route::delete('/ingredients', [IngredientController::class, 'destroyAll']);
     Route::get('/ingredients', [IngredientController::class, 'index']);
     Route::post('/ingredients', [IngredientController::class, 'store']);
     Route::put('/ingredients/{id}', [IngredientController::class, 'update']);

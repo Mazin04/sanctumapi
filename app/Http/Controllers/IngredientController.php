@@ -26,7 +26,7 @@ class IngredientController extends Controller
         // Check if the user has ingredients
         if ($ingredients->isEmpty()) {
             $message = $lang === 'es' ? 'No tienes ingredientes' : 'You have no ingredients';
-            return response()->json(['message' => $message], 200);
+            return response()->json(['message' => $message], 201);
         }
         return response()->json($ingredients);
     }
@@ -42,7 +42,7 @@ class IngredientController extends Controller
         // Check if the ingredient already exists for the user
         if ($user->ingredients()->where('ingredient_id', $ingredientId)->exists()) {
             $message = $lang === 'es' ? 'El ingrediente ya existe en tu lista' : 'The ingredient already exists in your list';
-            return response()->json(['message' => $message], 200);
+            return response()->json(['message' => $message], 404);
         }
 
         // Validate the input
@@ -59,7 +59,7 @@ class IngredientController extends Controller
         $ingredient = Ingredient::find($ingredientId);
         if (!$ingredient) {
             $message = $lang === 'es' ? 'Ingrediente no encontrado' : 'Ingredient not found';
-            return response()->json(['message' => $message], 200);
+            return response()->json(['message' => $message], 404);
         }
 
 
@@ -76,7 +76,7 @@ class IngredientController extends Controller
         $ingredient = $user->ingredients()->find($id);
         if (!$ingredient) {
             $message = $request->input('lang', 'es') === 'es' ? 'Ingrediente no encontrado' : 'Ingredient not found';
-            return response()->json(['message' => $message], 200);
+            return response()->json(['message' => $message], 404);
         }
 
         $newQuantity = $request->input('quantity');
@@ -106,6 +106,14 @@ class IngredientController extends Controller
         $user->ingredients()->detach($id);
         
         $message = $request->input('lang', 'es') === 'es' ? 'Ingrediente eliminado' : 'Ingredient deleted';
+        return response()->json(['message' => $message], 200);
+    }
+
+    public function destroyAll(Request $request)
+    {
+        $user = $request->user();
+        $user->ingredients()->detach();
+        $message = $request->input('lang', 'es') === 'es' ? 'Todos los ingredientes eliminados' : 'All ingredients deleted';
         return response()->json(['message' => $message], 200);
     }
 }
