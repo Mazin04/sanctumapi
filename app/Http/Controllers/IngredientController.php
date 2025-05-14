@@ -18,7 +18,7 @@ class IngredientController extends Controller
         ->map(function ($ingredient) use ($lang) {
             return [
                 'id' => $ingredient->id,
-                'name' => $ingredient->translations->firstWhere('language', $lang)->name ?? $ingredient->name,
+                'name' => $ingredient->translations->first()->name ?? $ingredient->name,
                 'quantity' => $ingredient->pivot->quantity,
                 'unit' => $ingredient->pivot->unit,
             ];

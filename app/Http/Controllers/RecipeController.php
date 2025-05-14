@@ -32,6 +32,11 @@ class RecipeController extends Controller
             $requiredQuantity = $ingredientQuantity->quantity;
             $requiredUnit = strtolower($ingredientQuantity->unit);
 
+            // Omitir ingredientes cuya unidad es 'taste'
+            if ($requiredUnit === 'taste') {
+                continue;
+            }
+
             $userIngredient = $userIngredients->get($ingredientId);
 
             if (!$userIngredient) {
@@ -39,8 +44,9 @@ class RecipeController extends Controller
                 continue;
             }
 
-            // Si las unidades son diferentes
-            if (strtolower($userIngredient->pivot->unit) !== $requiredUnit) {
+            $userUnit = strtolower($userIngredient->pivot->unit);
+
+            if ($userUnit !== $requiredUnit) {
                 $unitMismatch++;
                 continue;
             }
@@ -64,6 +70,7 @@ class RecipeController extends Controller
 
         return $ingredientsMatch;
     }
+
 
     /**
      * Filter recipes by ingredients.
@@ -272,13 +279,13 @@ class RecipeController extends Controller
                     'ingredients_match' => $ingredientsMatch,
                 ];
             });
-            if ($recipes->isEmpty()) {
-                $message = $lang === 'es'
+        if ($recipes->isEmpty()) {
+            $message = $lang === 'es'
                 ? 'No se encontraron recetas creadas por ti.'
                 : 'No recipes created by you found.';
 
-                return response()->json(['message' => $message, 'recipes' => []], 200);
-            }
+            return response()->json(['message' => $message, 'recipes' => []], 200);
+        }
 
         return response()->json($recipes);
     }
@@ -430,11 +437,11 @@ class RecipeController extends Controller
         // Obtener todas las recetas
         $recipes = Recipe::with('ingredients')
             ->where(function ($query) use ($user) {
-            $query->where('is_private', false)
-                ->orWhere('creator_id', $user->id)
-                ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-                });
+                $query->where('is_private', false)
+                    ->orWhere('creator_id', $user->id)
+                    ->orWhereHas('usersWhoFavourited', function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    });
             })
             ->get();
 
