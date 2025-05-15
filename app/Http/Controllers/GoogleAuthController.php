@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Exception;
 
 class GoogleAuthController extends Controller
 {
@@ -31,15 +32,15 @@ class GoogleAuthController extends Controller
                 $avatarContents = Http::get($avatarUrl)->body();
                 $filename = Str::uuid() . '.jpg';
                 Storage::disk('public')->put("avatars/{$filename}", $avatarContents);
-                $localAvatarPath = "storage/avatars/{$filename}";
-            } catch (\Exception $e) {
+                $localAvatarPath = config('app.url') . "/storage/avatars/{$filename}";
+            } catch (Exception $e) {
                 $localAvatarPath = null;
             }
         }
 
         if ($user) {
             $user->google_id = $googleUser->id;
-            $user->avatar = $googleUser->avatar;
+            $user->avatar = $localAvatarPath ?? $googleUser->avatar;
             $user->save();
         } else {
             $user = User::create([
@@ -52,9 +53,6 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        if ($localAvatarPath) {
-            logger()->info('Local avatar path: ' . $localAvatarPath);
-        }
         Auth::login($user);
         return redirect(config('app.frontend_url') . "/home");
     }
