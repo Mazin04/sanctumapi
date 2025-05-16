@@ -17,7 +17,7 @@ class IngredientController extends Controller
         }])->get()
         ->map(function ($ingredient) use ($lang) {
             return [
-                'id' => $ingredient->id,
+                'ingredient_id' => $ingredient->id,
                 'name' => $ingredient->translations->first()->name ?? $ingredient->name,
                 'quantity' => $ingredient->pivot->quantity,
                 'unit' => $ingredient->pivot->unit,
@@ -115,5 +115,20 @@ class IngredientController extends Controller
         $user->ingredients()->detach();
         $message = $request->input('lang', 'es') === 'es' ? 'Todos los ingredientes eliminados' : 'All ingredients deleted';
         return response()->json(['message' => $message], 200);
+    }
+
+    public function listIngredients(Request $request)
+    {
+        $lang = $request->input('lang', 'es');
+        $ingredients = Ingredient::with(['translations' => function ($query) use ($lang) {
+            $query->where('language', $lang);
+        }])->get()
+        ->map(function ($ingredient) use ($lang) {
+            return [
+                'id' => $ingredient->id,
+                'name' => $ingredient->translations->first()->name ?? $ingredient->name,
+            ];
+        });
+        return response()->json($ingredients);
     }
 }

@@ -60,6 +60,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/ingredients/{id}', [IngredientController::class, 'update']);
     Route::delete('/ingredients/{id}', [IngredientController::class, 'destroy']);
 
+    // Get list ingredients
+    Route::get('/ingredients/list', [IngredientController::class, 'listIngredients']);
+
     // Ideas
     // Obtener las recetas publicas de un usuario
     // Route::get('/user/{id}/public-recipes', [RecipeController::class, 'getPublicRecipesByUserId']);

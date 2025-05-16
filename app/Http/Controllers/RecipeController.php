@@ -227,6 +227,7 @@ class RecipeController extends Controller
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
+                    'is_favourite' => $recipe->usersWhoFavourited->contains($user->id),
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
@@ -274,6 +275,7 @@ class RecipeController extends Controller
                     'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
                     'is_private' => $recipe->is_private,
+                    'is_favourite' => $recipe->usersWhoFavourited->contains($user->id),
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
                     'ingredients_match' => $ingredientsMatch,
@@ -783,7 +785,11 @@ class RecipeController extends Controller
             return response()->json(['error' => $message], 404);
         }
 
-        if ($recipe->creator_id !== $user->id && !$recipe->is_official) {
+        if (
+            $recipe->creator_id !== $user->id &&
+            !$recipe->is_official &&
+            !$recipe->usersWhoFavourited->contains($user->id)
+        ) {
             $message = $lang === 'es'
                 ? 'No tienes permiso para ver esta receta.'
                 : 'You do not have permission to view this recipe.';
