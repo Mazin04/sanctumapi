@@ -786,6 +786,7 @@ class RecipeController extends Controller
         }
 
         if (
+            $recipe->is_private &&
             $recipe->creator_id !== $user->id &&
             !$recipe->is_official &&
             !$recipe->usersWhoFavourited->contains($user->id)
@@ -799,15 +800,17 @@ class RecipeController extends Controller
         $translation = $recipe->translations->first();
 
         $response = [
+            'id' => $recipe->id,
             'name' => $translation->name ?? '',
             'description' => $translation->description ?? '',
-            'image' => $recipe->image_path,
+            'image' => $recipe->image_path ? asset($recipe->image_path) : null,
             'is_official' => $recipe->is_official,
             'creator' => [
                 'id' => $recipe->creator_id,
                 'name' => $recipe->creator->name ?? '',
             ],
             'is_private' => $recipe->is_private,
+            'is_favourite' => $recipe->usersWhoFavourited->contains($user->id),
             'types' => $recipe->types->pluck('translations')->flatten()->pluck('name'),
             'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($recipe) {
                 $quantity = $recipe->ingredientsQuantities

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Favourite;
+use App\Models\Recipe;
 
 class FavouriteController extends Controller
 {
@@ -57,6 +58,14 @@ class FavouriteController extends Controller
                 ? 'Receta ya está en tus favoritos.'
                 : 'Recipe already in your favourites.';
             return response()->json(['error' => $message], 400);
+        }
+        
+        $recipe = Recipe::find($id);
+        if ($recipe->is_private && $recipe->creator_id !== $user->id) {
+            $message = $lang === 'es'
+                ? 'No puedes añadir recetas privadas a tus favoritos.'
+                : 'You cannot add private recipes to your favourites.';
+            return response()->json(['error' => $message], 403);
         }
 
         Favourite::create([

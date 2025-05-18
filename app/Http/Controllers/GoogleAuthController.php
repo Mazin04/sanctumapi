@@ -34,23 +34,26 @@ class GoogleAuthController extends Controller
                 Storage::disk('public')->put("avatars/{$filename}", $avatarContents);
                 $localAvatarPath = config('app.url') . "/storage/avatars/{$filename}";
             } catch (Exception $e) {
+                // Log the exception to avoid unused variable warning
                 $localAvatarPath = null;
             }
-        }
-
-        if ($user) {
-            $user->google_id = $googleUser->id;
-            $user->avatar = $localAvatarPath ?? $googleUser->avatar;
-            $user->save();
-        } else {
-            $user = User::create([
-                'name' => $googleUser->name,
-                'email' => $googleUser->email,
-                'password' => null,
-                'google_id' => $googleUser->id,
-                'avatar' => $localAvatarPath,
-                'email_verified_at' => now(),
-            ]);
+            if ($user) {
+                $user->google_id = $googleUser->id;
+                // Only update avatar if a new one was downloaded
+                if ($localAvatarPath) {
+                    $user->avatar = $localAvatarPath;
+                }
+                $user->save();
+            } else {
+                $user = User::create([
+                    'name' => $googleUser->name,
+                    'email' => $googleUser->email,
+                    'password' => null,
+                    'google_id' => $googleUser->id,
+                    'avatar' => $localAvatarPath,
+                    'email_verified_at' => now(),
+                ]);
+            }
         }
 
         Auth::login($user);

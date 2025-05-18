@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\PrivateController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -46,6 +47,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/favourites', [RecipeController::class, 'getUserFavouriteRecipes']);
     Route::delete('/recipes/{id}/favourite', [FavouriteController::class, 'removeFromFavourites']);
     Route::post('/recipes/{id}/favourite', [FavouriteController::class, 'addToFavourites']);
+
+    // Make private or public recipe
+    Route::post('/recipes/{id}/private', [PrivateController::class, 'makePrivate']);
+    Route::post('/recipes/{id}/public', [PrivateController::class, 'makePublic']);
 
     // CRUD Recipes
     Route::post('/recipes', [RecipeController::class, 'store']);
