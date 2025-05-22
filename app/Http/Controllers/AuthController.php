@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Recipe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -49,7 +50,7 @@ class AuthController extends Controller
 
         return response()->json(['data' => $user, 'access_token' => $token, 'token_type' => 'Bearer']);
     }
-    
+
     public function login(Request $request)
     {
         if (empty($request->email) || empty($request->password)) {
@@ -79,12 +80,30 @@ class AuthController extends Controller
         // Eliminar cookies relacionadas con Sanctum si las hay
         Cookie::queue(Cookie::forget('XSRF-TOKEN'));
         Cookie::queue(Cookie::forget('laravel_session'));
-        
+
         return response()->json(['message' => 'logoutSuccess']);
     }
 
-    public function user(Request $request)
+    public function user(Request $request, $id = null)
     {
+        $lang = $request->input('lang', 'es');
+
+        if ($id) {
+            $user = User::find($id);
+            if (!$user) {
+                $message = $lang === 'es' ? 'Usuario no encontrado' : 'User not found';
+                return response()->json(['message' => $message], 404);
+            }
+            // Formatear los datos que quieres devolver
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'created_at' => $user->created_at,
+                'avatar' => $user->avatar,
+            ];
+            return response()->json($userData);
+        }
         return response()->json($request->user());
     }
 

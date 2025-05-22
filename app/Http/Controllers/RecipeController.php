@@ -10,6 +10,7 @@ use App\Models\IngredientQuantity;
 use App\Models\RecipeIngredient;
 use Illuminate\Support\Facades\DB;
 use App\Models\UserIngredient;
+use App\Models\User;
 
 class RecipeController extends Controller
 {
@@ -293,6 +294,42 @@ class RecipeController extends Controller
     }
 
     /**
+     * Get all public recipes created by a user.
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */	
+    public function getPublicRecipes(Request $request, $id)
+    {
+        $lang = $request->input('lang', 'es');
+        $user = User::find($id);
+        if (!$user) {
+            $message = $lang === 'es' ? 'Usuario no encontrado' : 'User not found';
+            return response()->json(['message' => $message], 404);
+        }
+
+        $publicRecipes = Recipe::where('creator_id', $id)
+            ->where('is_private', false)
+            ->with(['ingredients', 'types', 'steps'])
+            ->get()
+            ->map(function ($recipe) use ($lang, $user) {
+                $ingredientsMatch = $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id'), $lang);
+                return [
+                    'id' => $recipe->id,
+                    'name' => $recipe->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
+                    'image' => $recipe->image_path ? asset($recipe->image_path) : null,
+                    'is_official' => $recipe->is_official,
+                    'is_private' => $recipe->is_private,
+                    'is_favourite' => $recipe->usersWhoFavourited->contains($user->id),
+                    'steps_count' => $recipe->recipeSteps->count(),
+                    'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
+                    'ingredients_match' => $ingredientsMatch,
+                ];
+            });
+        return response()->json($publicRecipes);
+    }
+    /**
      * Get recipes by name.
      * @param \Illuminate\Http\Request $request
      * @return mixed|\Illuminate\Http\JsonResponse
@@ -507,7 +544,7 @@ class RecipeController extends Controller
             'types.*' => 'integer|exists:types,id',
             'is_private' => 'required|boolean',
             'is_official' => 'boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         // Procesar imagen (si existe)
@@ -574,7 +611,7 @@ class RecipeController extends Controller
         $message = $lang === 'es'
             ? 'Receta creada con éxito.'
             : 'Recipe created successfully.';
-        return response()->json(['message' => $message, 'recipe' => $recipe], 201);
+        return response()->json(['success' => $message, 'recipe' => $recipe], 201);
     }
 
     /**

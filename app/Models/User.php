@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Http\Request;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
+
+    protected $table = 'users';
 
     /**
      * The attributes that are mass assignable.
@@ -46,19 +49,18 @@ class User extends Authenticatable
 
     public function recipes()
     {
-        return $this->hasMany(Recipe::class);
+        return $this->hasMany(Recipe::class, 'creator_id');
     }
 
     public function ingredients()
     {
         return $this->belongsToMany(Ingredient::class, 'user_ingredients')
-                    ->withPivot('quantity', 'unit')
-                    ->withTimestamps();
+            ->withPivot('quantity', 'unit')
+            ->withTimestamps();
     }
 
     public function favourites()
     {
         return $this->hasMany(Favourite::class);
     }
-    
 }

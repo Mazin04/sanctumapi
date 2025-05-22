@@ -72,7 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Get types of recipes
     Route::post('/recipes/types', [TypeController::class, 'getTypes']);
 
-    // Ideas
     // Obtener las recetas publicas de un usuario
-    // Route::get('/user/{id}/public-recipes', [RecipeController::class, 'getPublicRecipesByUserId']);
+    Route::get('/user/{id}', [AuthController::class, 'user']);
+    Route::get('/user/{id}/public-recipes', [RecipeController::class, 'getPublicRecipes']);
 });
