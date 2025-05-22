@@ -506,8 +506,8 @@ class RecipeController extends Controller
             'types' => 'required|array|min:1',
             'types.*' => 'integer|exists:types,id',
             'is_private' => 'required|boolean',
-            'is_official' => 'required|boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
+            'is_official' => 'boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         // Procesar imagen (si existe)
@@ -523,7 +523,7 @@ class RecipeController extends Controller
         $recipe = Recipe::create([
             'creator_id' => $user->id,
             'is_private' => $validated['is_private'],
-            'is_official' => $validated['is_official'],
+            'is_official' => false,
             'image_path' => $imagePath ?? null,
         ]);
 

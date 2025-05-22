@@ -9,6 +9,7 @@ use App\Http\Controllers\FavouriteController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\RecipeController;
+use App\Http\Controllers\TypeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +68,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Get list ingredients
     Route::get('/ingredients/list', [IngredientController::class, 'listIngredients']);
+
+    // Get types of recipes
+    Route::post('/recipes/types', [TypeController::class, 'getTypes']);
 
     // Ideas
     // Obtener las recetas publicas de un usuario

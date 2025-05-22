@@ -9,10 +9,6 @@ class Type extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'name',
-    ];
-
     /**
      * Get the recipes associated with the type.
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
