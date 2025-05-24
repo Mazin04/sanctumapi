@@ -11,6 +11,8 @@ use App\Models\RecipeIngredient;
 use Illuminate\Support\Facades\DB;
 use App\Models\UserIngredient;
 use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class RecipeController extends Controller
 {
@@ -298,7 +300,7 @@ class RecipeController extends Controller
      * @param \Illuminate\Http\Request $request
      * @param int $id
      * @return mixed|\Illuminate\Http\JsonResponse
-     */	
+     */
     public function getPublicRecipes(Request $request, $id)
     {
         $lang = $request->input('lang', 'es');
@@ -468,13 +470,17 @@ class RecipeController extends Controller
     public function recipesAvailableForUser(Request $request)
     {
         $user = $request->user();
+        $lang = $request->input('lang', 'es');
+        $perPage = (int) $request->input('perPage', 21);
+        $page = (int) $request->input('page', 1);
+
         // Obtener los IDs de ingredientes que tiene el usuario
         $userIngredientIds = UserIngredient::where('user_id', $user->id)
             ->pluck('ingredient_id')
             ->toArray();
 
         // Obtener todas las recetas
-        $recipes = Recipe::with('ingredients')
+        $recipes = Recipe::with(['ingredients', 'translations', 'types.translations', 'recipeSteps'])
             ->where(function ($query) use ($user) {
                 $query->where('is_private', false)
                     ->orWhere('creator_id', $user->id)
@@ -484,7 +490,7 @@ class RecipeController extends Controller
             })
             ->get();
 
-        // Filtrar recetas: quedarse solo con las que el usuario puede hacer
+        // Filtrar recetas disponibles
         $availableRecipes = $recipes->filter(function ($recipe) use ($user) {
             $userIngredients = $user->ingredients->keyBy('id');
             $ingredientsMatch = $this->getIngredientMatch($recipe, $userIngredients);
@@ -492,14 +498,23 @@ class RecipeController extends Controller
         });
 
         if ($availableRecipes->isEmpty()) {
-            $message = $request->input('lang', 'es') === 'es'
+            $message = $lang === 'es'
                 ? 'No tienes ingredientes suficientes para ninguna receta.'
                 : 'You do not have enough ingredients for any recipe.';
 
             return response()->json(['error' => $message], 404);
         }
 
-        return response()->json($availableRecipes->map(function ($recipe) use ($user) {
+        // Paginación manual
+        $sliced = $availableRecipes->forPage($page, $perPage)->values();
+        $paginated = new LengthAwarePaginator(
+            $sliced,
+            $availableRecipes->count(),
+            $perPage,
+            $page,
+        );
+
+        $paginated->setCollection($sliced->map(function ($recipe) use ($user) {
             return [
                 'id' => $recipe->id,
                 'name' => $recipe->translations->first()->name ?? 'Sin traducción',
@@ -507,11 +522,14 @@ class RecipeController extends Controller
                 'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                 'is_official' => $recipe->is_official,
                 'is_private' => $recipe->is_private,
+                'is_favourite' => $recipe->usersWhoFavourited->contains($user->id),
                 'steps_count' => $recipe->recipeSteps->count(),
                 'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? 'Sin traducción'),
                 'ingredients_match' => $this->getIngredientMatch($recipe, $user->ingredients->keyBy('id')),
             ];
         }));
+
+        return response()->json($paginated);
     }
 
     /**
