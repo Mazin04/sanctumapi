@@ -208,6 +208,8 @@ class RecipeController extends Controller
     public function getUserFavouriteRecipes(Request $request)
     {
         $user = $request->user();
+        $perPage = (int) $request->input('perPage', 12);
+        $page = (int) $request->input('page', 1);
         $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
         $recipes = Recipe::whereHas('usersWhoFavourited', function ($query) use ($user) {
             $query->where('user_id', $user->id);
@@ -246,7 +248,16 @@ class RecipeController extends Controller
             return response()->json(['message' => $message, 'recipes' => []], 200);
         }
 
-        return response()->json($recipes);
+        $sliced = $recipes->forPage($page, $perPage)->values();
+        $paginated = new LengthAwarePaginator(
+            $sliced,
+            $recipes->count(),
+            $perPage,
+            $page,
+        );
+        $paginated->setCollection($sliced);
+
+        return response()->json($paginated);
     }
 
     /**
@@ -257,6 +268,8 @@ class RecipeController extends Controller
     public function getUserCreatedRecipes(Request $request)
     {
         $user = $request->user();
+        $perPage = (int) $request->input('perPage', 12);
+        $page = (int) $request->input('page', 1);
         $lang = $request->input('lang', 'es'); // idioma por defecto (en or es)
         $recipes = Recipe::where('creator_id', $user->id)
             ->with([
@@ -292,7 +305,16 @@ class RecipeController extends Controller
             return response()->json(['message' => $message, 'recipes' => []], 200);
         }
 
-        return response()->json($recipes);
+        $sliced = $recipes->forPage($page, $perPage)->values();
+        $paginated = new LengthAwarePaginator(
+            $sliced,
+            $recipes->count(),
+            $perPage,
+            $page,
+        );
+        $paginated->setCollection($sliced);
+
+        return response()->json($paginated);
     }
 
     /**
@@ -339,6 +361,8 @@ class RecipeController extends Controller
     public function getRecipesByName(Request $request)
     {
         $lang = $request->input('lang', 'es'); // idioma por defecto
+        $perPage = (int) $request->input('perPage', 21);
+        $page = (int) $request->input('page', 1);
         $name = $request->input('name');
         $user = $request->user();
 
@@ -346,7 +370,7 @@ class RecipeController extends Controller
             $message = $lang === 'es'
                 ? 'Debes proporcionar un nombre de receta.'
                 : 'You must provide a recipe name.';
-            return response()->json(['error' => $message], 400);
+            return response()->json(['error' => $message], status: 200);
         }
 
         $recipes = Recipe::whereHas('translations', function ($query) use ($name, $lang) {
@@ -378,6 +402,7 @@ class RecipeController extends Controller
                     'description' => $recipe->translations->first()->description ?? ($lang === 'es' ? 'Sin traducción' : 'No translation'),
                     'image' => $recipe->image_path ? asset($recipe->image_path) : null,
                     'is_official' => $recipe->is_official,
+                    'is_favourite' => $recipe->usersWhoFavourited->contains($user->id),
                     'is_private' => $recipe->is_private,
                     'steps_count' => $recipe->recipeSteps->count(),
                     'types' => $recipe->types->map(fn($t) => $t->translations->first()->name ?? ($lang === 'es' ? 'Sin traducción' : 'No translation')),
@@ -389,11 +414,20 @@ class RecipeController extends Controller
             $message = $lang === 'es'
                 ? 'No se encontraron recetas con ese nombre.'
                 : 'No recipes found with that name.';
-            return response()->json(['error' => $message], 404);
+            return response()->json(['error' => $message, 'data' => []], 200);
         }
 
+        $sliced = $recipes->forPage($page, $perPage)->values();
+        $paginated = new LengthAwarePaginator(
+            $sliced,
+            $recipes->count(),
+            $perPage,
+            $page,
+        );
 
-        return response()->json($recipes);
+        $paginated->setCollection($sliced);
+
+        return response()->json($paginated);
     }
 
     /**

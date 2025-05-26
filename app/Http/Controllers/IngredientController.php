@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Ingredient;
 
@@ -11,6 +12,8 @@ class IngredientController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $perPage = (int) $request->input('perPage', 21);
+        $page = (int) $request->input('page', 1);
         $lang = $request->input('lang', 'es');
         $ingredients = $user->ingredients()->with(['translations' => function ($query) use ($lang) {
             $query->where('language', $lang);
@@ -28,7 +31,17 @@ class IngredientController extends Controller
             $message = $lang === 'es' ? 'No tienes ingredientes' : 'You have no ingredients';
             return response()->json(['message' => $message], 201);
         }
-        return response()->json($ingredients);
+
+        $sliced = $ingredients->forPage($page, $perPage);
+        $paginated = new LengthAwarePaginator(
+            $sliced,
+            $ingredients->count(),
+            $perPage,
+            $page,
+        );
+
+        $paginated->setCollection($sliced);
+        return response()->json($paginated);
     }
 
     public function store(Request $request)
